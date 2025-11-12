@@ -1,0 +1,21 @@
+Train Ticket Assistance System
+------------------------------
+
+This project is a serverless train ticket assistance application that enables customers to:
+
+--> Book Tickets – Collect passenger details and generate a unique ticket ID.
+--> Cancel Tickets – Allow users to cancel existing bookings.
+--> Check Ticket Details – Retrieve booking information using the ticket ID.
+--> Connect with Customer Support – Provide an option for users to reach support.
+
+Architecture & Technologies
+---------------------------
+
+--> AWS Lambda – Handles backend logic such as generating ticket IDs and Fetch user details.
+--> Amazon DynamoDB – Stores user and ticket details in a scalable NoSQL database.
+--> Integration – Lambda functions interact with DynamoDB for CRUD operations.
+Features:
+
+- Unique ticket ID generation.
+- Secure and efficient data storage.
+- Real-time ticket status retrieval.
