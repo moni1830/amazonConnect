@@ -1,0 +1,96 @@
+import json
+import random
+import string
+from datetime import datetime
+import boto3
+
+#generate a random 6-digit ticket ID
+def generate_ticket_id():
+    return 'tkt' + ''.join(random.choices(string.digits, k=6))
+
+def lambda_handler(event, context):
+    # Connect to DynamoDB resource
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('TrainTicket')
+    # Get the intent name from Lex input
+    intent_name = event['sessionState']['intent']['name']
+    # Get all the slot values
+    slots = event['sessionState']['intent']['slots']
+
+    # Intent 1: BookTrainTicket
+    if intent_name == 'BookTrainTicket':
+        # Extract all slot values from the user
+        passenger_name = slots['passengerName']['value']['interpretedValue']
+        source_city = slots['sourceCity']['value']['interpretedValue']
+        destination_city = slots['destinationCity']['value']['interpretedValue']
+        travel_date = slots['travelDate']['value']['interpretedValue']
+        travel_time = slots['travelTime']['value']['interpretedValue']
+        train_type = slots['trainType']['value']['interpretedValue']
+        # Generate unique ticket ID
+        ticket_id = generate_ticket_id()
+        # Save the booking data into DynamoDB
+        table.put_item(Item={
+            'ticketId': ticket_id,
+            'passengerName': passenger_name,
+            'sourceCity': source_city,
+            'destinationCity': destination_city,
+            'travelDate': travel_date,
+            'travelTime': travel_time,
+            'trainType': train_type
+        })
+        # Success message to send back to Lex
+        message = f"Ticket booked successfully! Your ticket ID is {ticket_id}."
+
+    # Intent 2: CancelTrainTicket
+    elif intent_name == 'CancelTrainTicket':
+        # Get ticket ID from user input
+        ticket_id = slots['ticketId']['value']['interpretedValue']
+        # Fetch the ticket from DynamoDB
+        response = table.get_item(Key={'ticketId': ticket_id})
+        # If ticket exists, delete it
+        if 'Item' in response:
+            table.delete_item(Key={'ticketId': ticket_id})
+            message = f"Ticket {ticket_id} has been cancelled successfully."
+        else:
+            message = f"Ticket ID {ticket_id} not found. Please check and try again."
+
+    # Intent 3: CheckTicketStatus
+    elif intent_name == 'CheckTicketDetails':
+        # Get ticket ID from user input
+        ticket_id = slots['checkTicketId']['value']['interpretedValue']
+        # Fetch ticket details from DynamoDB
+        response = table.get_item(Key={'ticketId': ticket_id})
+        # If found, show all ticket details      
+        if 'Item' in response:
+            item = response['Item']
+            message = (
+                f"Ticket Details:\n"
+                f"Ticket ID: {ticket_id}\n"
+                f"Passenger: {item['passengerName']}\n"
+                f"From: {item['sourceCity']} To: {item['destinationCity']}\n"
+                f"Date: {item['travelDate']} at {item['travelTime']}\n"
+                f"Type: {item['trainType']}\n"
+            )
+        else:
+            message = f"No ticket found for ID {ticket_id}."
+    else:
+        message = "Sorry, I couldn't understand your request."
+    #final response
+    return {
+        "sessionState": {
+            "dialogAction": {
+                "type": "Close"  
+            },
+            "intent": {
+                "name": intent_name,
+                "state": "Fulfilled"  
+            }
+        },
+        "messages": [
+            {
+                "contentType": "PlainText",
+                "content": message  
+            }
+        ]
+    }
+
